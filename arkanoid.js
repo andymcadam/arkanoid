@@ -51,7 +51,14 @@ initBricks();
 const levels = [
     'levels/level1.csv',
     'levels/level2.csv',
-    'levels/level3.csv'
+    'levels/level3.csv',
+    'levels/level4.csv',
+    'levels/level5.csv',
+    'levels/level6.csv',
+    'levels/level7.csv',
+    'levels/level8.csv',
+    'levels/level9.csv',
+    'levels/level10.csv'
 ];
 let currentLevelIndex = 0;
 let levelTransitioning = false;
@@ -441,17 +448,22 @@ function resetGame() {
     y = canvas.height - 50; // Start ball a bit higher to account for new height
     dx = 2;
     dy = -2;
-    // Reset bricks
-    for (let c = 0; c < brickColumnCount; c++) {
-        for (let r = 0; r < brickRowCount; r++) {
-            bricks[c][r].status = 1;
-            bricks[c][r].falling = false;
-            bricks[c][r].vy = 0;
-            bricks[c][r].opacity = 1;
-            bricks[c][r].flash = false;
-            bricks[c][r].flashTimer = 0;
+    // Load the first level layout from CSV so restart matches level design files
+    loadLevel(0).then(ok => {
+        if (!ok) {
+            // Fallback: if loading fails, fill every brick so the game is still playable
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    bricks[c][r].status = 1;
+                    bricks[c][r].falling = false;
+                    bricks[c][r].vy = 0;
+                    bricks[c][r].opacity = 1;
+                    bricks[c][r].flash = false;
+                    bricks[c][r].flashTimer = 0;
+                }
+            }
         }
-    }
+    });
 }
 
 // Screenshake variables
