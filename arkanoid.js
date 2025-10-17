@@ -7,8 +7,20 @@ let scorePopups = []; // stores temporary score display data
 let scoreMultiplier = 10; // Starts at 10
 const rowColors = ["#f00", "#fa0", "#ff0", "#0f0", "#0ff"];
 
-// Highscore
-let highscore = parseInt(localStorage.getItem('arkanoidHighscore')) || 0;
+// Highscore stored in cookie
+const HIGH_SCORE_COOKIE = 'arkanoidHighscore';
+
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\\[\\]\\/\\+^])/g, '\\$1') + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setCookie(name, value, days) {
+    const expires = days ? '; max-age=' + days * 24 * 60 * 60 : '';
+    document.cookie = `${name}=${encodeURIComponent(value)}${expires}; path=/`;
+}
+
+let highscore = parseInt(getCookie(HIGH_SCORE_COOKIE), 10) || 0;
 
 // Game state
 let gameOver = false;
@@ -437,7 +449,7 @@ function resetGame() {
     // Update highscore if needed
     if (score > highscore) {
         highscore = score;
-        localStorage.setItem('arkanoidHighscore', highscore);
+        setCookie(HIGH_SCORE_COOKIE, highscore, 365);
     }
     // Reset all game variables
     score = 0;
@@ -522,7 +534,7 @@ function draw() {
             // Update highscore if needed
             if (score > highscore) {
                 highscore = score;
-                localStorage.setItem('arkanoidHighscore', highscore);
+                setCookie(HIGH_SCORE_COOKIE, highscore, 365);
             }
             gameOver = true;
             restartBtn.style.display = 'block';

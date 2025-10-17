@@ -10,6 +10,7 @@ The goal is to experiment with gameplay ideas and code while iterating quickly. 
 - Simple 3D-looking bricks, ball and paddle using canvas gradients
 - Level system: levels defined in `levels/*.csv` and loaded in sequence
 - Score carries over between levels; game ends after the final level
+- Persistent per-player highscore saved in a browser cookie
 
 ## Run locally
 
