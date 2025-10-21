@@ -46,8 +46,10 @@ const brickPadding = 1;
 const ballRadius = 8;
 let x = canvas.width / 2;
 let y = canvas.height - 50; // Start ball a bit higher to account for new height
-let dx = 2;
-let dy = -2;
+// starting speed for the ball (change this to adjust initial velocity)
+let ballSpeed = 4;
+let dx = ballSpeed;
+let dy = -ballSpeed;
 
 // Bricks settings
 const brickRowCount = 5;
@@ -135,8 +137,8 @@ async function advanceLevel() {
         paddleX = (canvas.width - paddleWidth) / 2;
         x = canvas.width / 2;
         y = canvas.height - 50;
-        dx = 2;
-        dy = -2;
+        dx = ballSpeed;
+        dy = -ballSpeed;
         scoreMultiplier = 10;
     } else {
         console.warn('Failed to load next level');
@@ -467,8 +469,8 @@ function resetGame() {
     paddleX = (canvas.width - paddleWidth) / 2;
     x = canvas.width / 2;
     y = canvas.height - 50; // Start ball a bit higher to account for new height
-    dx = 2;
-    dy = -2;
+    dx = ballSpeed;
+    dy = -ballSpeed;
     // Load the first level layout from CSV so restart matches level design files
     loadLevel(0).then(ok => {
         if (!ok) {
@@ -508,6 +510,15 @@ function draw() {
         shakeOffsetY = 0;
     }
     drawStarfield();
+    // Draw top boundary line for the play area (visual cue for where the ball bounces)
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200,200,200,0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 40);
+    ctx.lineTo(canvas.width, 40);
+    ctx.stroke();
+    ctx.restore();
     drawBricks();
     drawBall();
     drawPaddle();
