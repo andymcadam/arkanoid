@@ -11,8 +11,17 @@ const rowColors = ["#f00", "#fa0", "#ff0", "#0f0", "#0ff"];
 const HIGH_SCORE_COOKIE = 'arkanoidHighscore';
 
 function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\\[\\]\\/\\+^])/g, '\\$1') + '=([^;]*)'));
-    return match ? decodeURIComponent(match[1]) : null;
+    // Simple, robust cookie parser to avoid complex regex and escaping issues
+    if (!document.cookie) return null;
+    const pairs = document.cookie.split('; ');
+    for (let i = 0; i < pairs.length; i++) {
+        const idx = pairs[i].indexOf('=');
+        if (idx === -1) continue;
+        const key = pairs[i].substring(0, idx);
+        const val = pairs[i].substring(idx + 1);
+        if (key === name) return decodeURIComponent(val);
+    }
+    return null;
 }
 
 function setCookie(name, value, days) {
