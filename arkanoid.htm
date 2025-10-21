@@ -4,16 +4,40 @@
   <meta charset="UTF-8">
   <title>Simple Arkanoid</title>
   <style>
+    body {
+      background: #222;
+      font-family: Arial, sans-serif;
+    }
     canvas {
       background: #000;
       display: block;
       margin: 0 auto;
       border: 2px solid #fff;
     }
+    .editor-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .editor-link a {
+      color: #09f;
+      text-decoration: none;
+      font-size: 16px;
+      padding: 10px 20px;
+      border: 2px solid #09f;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .editor-link a:hover {
+      background: #09f;
+      color: #000;
+    }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas" width="480" height="320"></canvas>
+  <div class="editor-link">
+    <a href="editor.htm">🎨 Level Editor</a>
+  </div>
   <script src="arkanoid.js"></script>
 </body>
 </html>
