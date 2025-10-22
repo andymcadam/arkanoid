@@ -7,6 +7,10 @@ let scorePopups = []; // stores temporary score display data
 let scoreMultiplier = 10; // Starts at 10
 const rowColors = ["#f00", "#fa0", "#ff0", "#0f0", "#0ff"];
 
+// Game mode tracking
+let gameMode = 'normal'; // 'normal' or 'custom'
+let customLevelData = null;
+
 // Highscore stored in cookie
 const HIGH_SCORE_COOKIE = 'arkanoidHighscore';
 
@@ -87,13 +91,10 @@ let currentLevelIndex = 0;
 let levelTransitioning = false;
 
 async function loadLevel(index) {
-    if (index < 0 || index >= levels.length) return false;
-    const path = levels[index];
-    try {
-        const resp = await fetch(path);
-        if (!resp.ok) throw new Error('Failed to load level ' + path);
-        const text = await resp.text();
-        const rows = text.trim().split('\n').map(line => line.trim()).filter(Boolean);
+    if (gameMode === 'custom') {
+        // Load custom level from stored data
+        if (!customLevelData) return false;
+        const rows = customLevelData.trim().split('\n').map(line => line.trim()).filter(Boolean);
         initBricks();
         for (let r = 0; r < Math.min(rows.length, brickRowCount); r++) {
             const cols = rows[r].split(',').map(s => parseInt(s, 10) || 0);
@@ -106,28 +107,59 @@ async function loadLevel(index) {
                 bricks[c][r].flashTimer = 0;
             }
         }
-        currentLevelIndex = index;
         return true;
-    } catch (err) {
-        console.error('Error loading level:', err);
-        return false;
+    } else {
+        // Normal campaign mode
+        if (index < 0 || index >= levels.length) return false;
+        const path = levels[index];
+        try {
+            const resp = await fetch(path);
+            if (!resp.ok) throw new Error('Failed to load level ' + path);
+            const text = await resp.text();
+            const rows = text.trim().split('\n').map(line => line.trim()).filter(Boolean);
+            initBricks();
+            for (let r = 0; r < Math.min(rows.length, brickRowCount); r++) {
+                const cols = rows[r].split(',').map(s => parseInt(s, 10) || 0);
+                for (let c = 0; c < Math.min(cols.length, brickColumnCount); c++) {
+                    bricks[c][r].status = cols[c] === 1 ? 1 : 0;
+                    bricks[c][r].falling = false;
+                    bricks[c][r].vy = 0;
+                    bricks[c][r].opacity = 1;
+                    bricks[c][r].flash = false;
+                    bricks[c][r].flashTimer = 0;
+                }
+            }
+            currentLevelIndex = index;
+            return true;
+        } catch (err) {
+            console.error('Error loading level:', err);
+            return false;
+        }
     }
 }
 
-// Load the first level
-loadLevel(0).then(ok => {
-    if (!ok) console.warn('Failed to load initial level');
-});
+// Load the first level - but don't start until user clicks play
+// loadLevel(0).then(ok => {
+//     if (!ok) console.warn('Failed to load initial level');
+// });
 
 async function advanceLevel() {
     if (levelTransitioning) return;
+    if (gameMode === 'custom') {
+        // Custom levels don't advance - just restart the same level
+        alert('Level Complete! Score: ' + score);
+        gameOver = true;
+        showGameOverButtons();
+        levelTransitioning = false;
+        return;
+    }
     levelTransitioning = true;
     const next = currentLevelIndex + 1;
     if (next >= levels.length) {
         // Completed final level -> end game
         alert('YOU WIN! Final score: ' + score);
         gameOver = true;
-        restartBtn.style.display = 'block';
+        showGameOverButtons();
         levelTransitioning = false;
         return;
     }
@@ -437,24 +469,57 @@ function drawStarfield() {
     ctx.restore();
 }
 
-// Add restart button to DOM
+// Add game over buttons to DOM
+let gameOverContainer = document.createElement('div');
+gameOverContainer.id = 'gameOverButtons';
+gameOverContainer.style.position = 'absolute';
+gameOverContainer.style.left = '50%';
+gameOverContainer.style.top = '50%';
+gameOverContainer.style.transform = 'translate(-50%, -50%)';
+gameOverContainer.style.display = 'none';
+gameOverContainer.style.textAlign = 'center';
+document.body.appendChild(gameOverContainer);
+
+let mainMenuBtn = document.createElement('button');
+mainMenuBtn.textContent = 'Main Menu';
+mainMenuBtn.style.fontSize = '24px';
+mainMenuBtn.style.padding = '12px 32px';
+mainMenuBtn.style.margin = '10px';
+mainMenuBtn.style.background = '#09f';
+mainMenuBtn.style.color = '#fff';
+mainMenuBtn.style.border = 'none';
+mainMenuBtn.style.borderRadius = '4px';
+mainMenuBtn.style.cursor = 'pointer';
+mainMenuBtn.style.fontWeight = 'bold';
+gameOverContainer.appendChild(mainMenuBtn);
+
 let restartBtn = document.createElement('button');
 restartBtn.textContent = 'Restart';
-restartBtn.style.position = 'absolute';
-restartBtn.style.left = '50%';
-restartBtn.style.top = '50%';
-restartBtn.style.transform = 'translate(-50%, -50%)';
 restartBtn.style.fontSize = '24px';
 restartBtn.style.padding = '12px 32px';
-restartBtn.style.display = 'none';
-document.body.appendChild(restartBtn);
+restartBtn.style.margin = '10px';
+restartBtn.style.background = '#0f0';
+restartBtn.style.color = '#000';
+restartBtn.style.border = 'none';
+restartBtn.style.borderRadius = '4px';
+restartBtn.style.cursor = 'pointer';
+restartBtn.style.fontWeight = 'bold';
+gameOverContainer.appendChild(restartBtn);
+
+mainMenuBtn.addEventListener('click', function() {
+    showMainMenu();
+});
 
 restartBtn.addEventListener('click', function() {
     resetGame();
-    restartBtn.style.display = 'none';
+    gameOverContainer.style.display = 'none';
     gameOver = false;
     draw();
 });
+
+function showGameOverButtons() {
+    gameOverContainer.style.display = 'block';
+}
 
 function resetGame() {
     // Update highscore if needed
@@ -471,22 +536,27 @@ function resetGame() {
     y = canvas.height - 50; // Start ball a bit higher to account for new height
     dx = ballSpeed;
     dy = -ballSpeed;
-    // Load the first level layout from CSV so restart matches level design files
-    loadLevel(0).then(ok => {
-        if (!ok) {
-            // Fallback: if loading fails, fill every brick so the game is still playable
-            for (let c = 0; c < brickColumnCount; c++) {
-                for (let r = 0; r < brickRowCount; r++) {
-                    bricks[c][r].status = 1;
-                    bricks[c][r].falling = false;
-                    bricks[c][r].vy = 0;
-                    bricks[c][r].opacity = 1;
-                    bricks[c][r].flash = false;
-                    bricks[c][r].flashTimer = 0;
+    // Load the appropriate level based on game mode
+    if (gameMode === 'custom') {
+        loadLevel(0); // This will use customLevelData
+    } else {
+        // Load the first level layout from CSV so restart matches level design files
+        loadLevel(0).then(ok => {
+            if (!ok) {
+                // Fallback: if loading fails, fill every brick so the game is still playable
+                for (let c = 0; c < brickColumnCount; c++) {
+                    for (let r = 0; r < brickRowCount; r++) {
+                        bricks[c][r].status = 1;
+                        bricks[c][r].falling = false;
+                        bricks[c][r].vy = 0;
+                        bricks[c][r].opacity = 1;
+                        bricks[c][r].flash = false;
+                        bricks[c][r].flashTimer = 0;
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 }
 
 // Screenshake variables
@@ -557,7 +627,7 @@ function draw() {
                 setCookie(HIGH_SCORE_COOKIE, highscore, 365);
             }
             gameOver = true;
-            restartBtn.style.display = 'block';
+            showGameOverButtons();
             return;
         }
     }
@@ -586,4 +656,70 @@ function draw() {
     requestAnimationFrame(draw);
 }
 
-draw();
+// Don't auto-start - wait for menu selection
+// draw();
+
+// Menu functions
+function showMainMenu() {
+    document.getElementById('mainMenu').style.display = 'block';
+    document.getElementById('customLevelSelect').style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'none';
+    gameOver = true; // Stop the game loop
+    gameOverContainer.style.display = 'none';
+}
+
+function showCustomLevelSelect() {
+    document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('customLevelSelect').style.display = 'block';
+    document.getElementById('gameContainer').style.display = 'none';
+    
+    // Load custom levels from localStorage
+    const customLevels = getCustomLevels();
+    const levelList = document.getElementById('customLevelList');
+    levelList.innerHTML = '';
+    
+    const levelNames = Object.keys(customLevels);
+    if (levelNames.length === 0) {
+        levelList.innerHTML = '<p style="color: #888;">No custom levels found. Create one in the Level Editor!</p>';
+    } else {
+        levelNames.forEach(name => {
+            const levelItem = document.createElement('div');
+            levelItem.className = 'level-item';
+            levelItem.textContent = name;
+            levelItem.onclick = () => startCustomLevel(name, customLevels[name]);
+            levelList.appendChild(levelItem);
+        });
+    }
+}
+
+function getCustomLevels() {
+    const data = localStorage.getItem('arkanoid_custom_levels');
+    return data ? JSON.parse(data) : {};
+}
+
+function startNormalGame() {
+    gameMode = 'normal';
+    customLevelData = null;
+    currentLevelIndex = 0;
+    
+    document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('customLevelSelect').style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'block';
+    
+    resetGame();
+    gameOver = false;
+    draw();
+}
+
+function startCustomLevel(levelName, levelData) {
+    gameMode = 'custom';
+    customLevelData = levelData;
+    
+    document.getElementById('mainMenu').style.display = 'none';
+    document.getElementById('customLevelSelect').style.display = 'none';
+    document.getElementById('gameContainer').style.display = 'block';
+    
+    resetGame();
+    gameOver = false;
+    draw();
+}
