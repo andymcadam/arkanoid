@@ -4,16 +4,122 @@
   <meta charset="UTF-8">
   <title>Simple Arkanoid</title>
   <style>
+    body {
+      background: #222;
+      font-family: Arial, sans-serif;
+      color: #fff;
+    }
     canvas {
       background: #000;
       display: block;
       margin: 0 auto;
       border: 2px solid #fff;
     }
+    .editor-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .editor-link a {
+      color: #09f;
+      text-decoration: none;
+      font-size: 16px;
+      padding: 10px 20px;
+      border: 2px solid #09f;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .editor-link a:hover {
+      background: #09f;
+      color: #000;
+    }
+    #mainMenu {
+      text-align: center;
+      padding: 50px 20px;
+    }
+    #mainMenu h1 {
+      font-size: 48px;
+      margin-bottom: 40px;
+      color: #0ff;
+      text-shadow: 0 0 10px #0ff;
+    }
+    .menu-button {
+      background: #0f0;
+      color: #000;
+      border: none;
+      padding: 15px 40px;
+      margin: 10px;
+      font-size: 20px;
+      cursor: pointer;
+      border-radius: 8px;
+      font-weight: bold;
+      display: block;
+      width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .menu-button:hover {
+      background: #0d0;
+      transform: scale(1.05);
+    }
+    .menu-button.secondary {
+      background: #09f;
+      color: #fff;
+    }
+    .menu-button.secondary:hover {
+      background: #07d;
+    }
+    #customLevelSelect {
+      display: none;
+      text-align: center;
+      padding: 50px 20px;
+    }
+    #customLevelSelect h2 {
+      color: #0ff;
+      margin-bottom: 20px;
+    }
+    .level-list {
+      max-width: 400px;
+      margin: 20px auto;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .level-item {
+      background: #333;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 2px solid #555;
+    }
+    .level-item:hover {
+      background: #444;
+      border-color: #0ff;
+    }
+    #gameContainer {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="480" height="320"></canvas>
+  <div id="mainMenu">
+    <h1>🎮 ARKANOID</h1>
+    <button class="menu-button" onclick="startNormalGame()">Play Game</button>
+    <button class="menu-button secondary" onclick="showCustomLevelSelect()">Play Custom Level</button>
+    <button class="menu-button secondary" onclick="window.location.href='editor.htm'">Level Editor</button>
+  </div>
+
+  <div id="customLevelSelect">
+    <h2>Select Custom Level</h2>
+    <div class="level-list" id="customLevelList"></div>
+    <button class="menu-button" onclick="showMainMenu()">Back to Main Menu</button>
+  </div>
+
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
+    <div class="editor-link">
+      <a href="#" onclick="showMainMenu(); return false;">← Main Menu</a>
+    </div>
+  </div>
   <script src="arkanoid.js"></script>
 </body>
 </html>

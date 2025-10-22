@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Arkanoid Level Editor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #222;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    .info {
+      color: #aaa;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    #editorCanvas {
+      background: #000;
+      display: block;
+      margin: 20px auto;
+      border: 2px solid #fff;
+      cursor: pointer;
+    }
+    .controls {
+      margin: 20px auto;
+      max-width: 800px;
+    }
+    button {
+      background: #0f0;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #0d0;
+    }
+    button.secondary {
+      background: #09f;
+    }
+    button.secondary:hover {
+      background: #07d;
+    }
+    button.danger {
+      background: #f33;
+      color: #fff;
+    }
+    button.danger:hover {
+      background: #d11;
+    }
+    input, select {
+      padding: 8px;
+      margin: 5px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #333;
+      color: #fff;
+    }
+    .section {
+      background: #333;
+      padding: 15px;
+      margin: 15px auto;
+      max-width: 800px;
+      border-radius: 8px;
+    }
+    .note {
+      background: #444;
+      padding: 10px;
+      margin: 15px auto;
+      max-width: 800px;
+      border-radius: 8px;
+      border-left: 4px solid #09f;
+      text-align: left;
+    }
+    #customLevels {
+      list-style: none;
+      padding: 0;
+    }
+    #customLevels li {
+      background: #444;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    a {
+      color: #09f;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Arkanoid Level Editor</h1>
+  <p class="info">Click cells to toggle bricks on/off. Design your custom levels!</p>
+  
+  <canvas id="editorCanvas" width="480" height="200"></canvas>
+  
+  <div class="controls">
+    <div class="section">
+      <h3>Level Actions</h3>
+      <button onclick="clearLevel()">Clear All</button>
+      <button onclick="fillLevel()">Fill All</button>
+      <button class="secondary" onclick="randomLevel()">Random</button>
+    </div>
+    
+    <div class="section">
+      <h3>Save & Load</h3>
+      <input type="text" id="levelName" placeholder="Level name" value="custom_level">
+      <button onclick="saveLevel()">Save to Browser</button>
+      <button class="secondary" onclick="exportCSV()">Export CSV File</button>
+    </div>
+    
+    <div class="section">
+      <h3>Your Custom Levels</h3>
+      <ul id="customLevels"></ul>
+    </div>
+    
+    <div class="note">
+      <strong>📝 Note:</strong> Custom levels are saved locally in your browser. 
+      <br><strong>Future Feature:</strong> We plan to add a "Community Levels" upload area where you can share your levels with other players! Stay tuned for this feature in a future update.
+    </div>
+    
+    <div style="margin-top: 20px;">
+      <a href="arkanoid.htm">← Back to Game</a>
+    </div>
+  </div>
+  
+  <script src="editor.js"></script>
+</body>
+</html>

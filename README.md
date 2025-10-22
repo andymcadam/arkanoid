@@ -11,6 +11,7 @@ The goal is to experiment with gameplay ideas and code while iterating quickly. 
 - Level system: levels defined in `levels/*.csv` and loaded in sequence
 - Score carries over between levels; game ends after the final level
 - Persistent per-player highscore saved in a browser cookie
+- **Level Editor**: Visual tool for designing custom levels with save/export functionality
 
 ## Run locally
 
@@ -41,7 +42,21 @@ Example (8 columns per row):
 ## Extending
 
 - Add new `levels/*.csv` and include them in the `levels` array inside `arkanoid.js` to expand the campaign.
-- A future level editor could export CSV files with the same shape.
+- Use the built-in **Level Editor** (`editor.htm`) to visually design and export custom levels as CSV files.
+
+## Level Editor
+
+The project includes a visual level editor accessible at `editor.htm`. Features include:
+
+- **Visual Grid Editing**: Click cells to toggle bricks on/off on an 8×5 grid
+- **Quick Actions**: Clear all, fill all, or generate random level patterns
+- **Save to Browser**: Store custom levels in browser localStorage for later editing
+- **Export CSV**: Download levels as CSV files that can be added to the `levels/` directory
+- **Load & Manage**: Load previously saved levels and delete unwanted ones
+
+Access the editor by opening `http://localhost:8000/editor.htm` or click the "🎨 Level Editor" link on the game page.
+
+**Note**: Future plans include adding a "Community Levels" upload area where players can share their custom levels with others.
 
 ## Raspberry Pi & educational use
 
