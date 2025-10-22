@@ -184,6 +184,26 @@ function csvToGrid(csv) {
     }
 }
 
+// Check if level name exists and update warning message
+function checkLevelExists() {
+    const levelName = document.getElementById('levelName').value.trim();
+    const warningDiv = document.getElementById('levelExistsWarning');
+    
+    if (!levelName) {
+        warningDiv.textContent = '';
+        return false;
+    }
+    
+    const levels = getCustomLevels();
+    if (levels[levelName]) {
+        warningDiv.textContent = '⚠️ A level with this name already exists';
+        return true;
+    } else {
+        warningDiv.textContent = '';
+        return false;
+    }
+}
+
 // Save level to localStorage
 function saveLevel() {
     const levelName = document.getElementById('levelName').value.trim();
@@ -192,13 +212,23 @@ function saveLevel() {
         return;
     }
     
-    const csv = gridToCSV();
     const levels = getCustomLevels();
+    const levelExists = levels[levelName] !== undefined;
+    
+    // Show confirmation if level exists
+    if (levelExists) {
+        if (!confirm('A level named "' + levelName + '" already exists. Do you want to overwrite it?')) {
+            return; // User cancelled, don't save
+        }
+    }
+    
+    const csv = gridToCSV();
     levels[levelName] = csv;
     localStorage.setItem('arkanoid_custom_levels', JSON.stringify(levels));
     
     alert('Level saved: ' + levelName);
     displayCustomLevels();
+    checkLevelExists(); // Update warning message after save
 }
 
 // Get all custom levels from localStorage
@@ -288,3 +318,6 @@ function exportCSV() {
 initGrid();
 drawGrid();
 displayCustomLevels();
+
+// Add event listener for level name input to check for existing levels
+document.getElementById('levelName').addEventListener('input', checkLevelExists);
