@@ -61,6 +61,31 @@ const brickColumnCount = 8;
 const brickWidth = 50;
 const brickHeight = 20;
 
+// Level management
+const levels = [
+    'levels/level1.csv',
+    'levels/level2.csv',
+    'levels/level3.csv',
+    'levels/level4.csv',
+    'levels/level5.csv',
+    'levels/level6.csv',
+    'levels/level7.csv',
+    'levels/level8.csv',
+    'levels/level9.csv',
+    'levels/level10.csv'
+];
+let currentLevelIndex = 0;
+let levelTransitioning = false;
+
+// Bonus system
+let bonuses = [];
+let bricksSinceLastBonus = 0;
+let targetBonusInterval = 10; // first bonus after ~10 bricks
+const PAD_GROW_DURATION = 10000; // 10 seconds in milliseconds
+let padGrowActive = false;
+let padOriginalWidth = null;
+let padGrowExpires = 0;
+
 let bricks = [];
 function initBricks() {
     // Initialize a fresh bricks grid with default properties
@@ -82,6 +107,8 @@ function initBricks() {
         }
     }
 }
+// Initialize bricks array at startup
+initBricks();
 
 // Load a level by index. Supports normal (CSV files listed in `levels`) and
 // custom mode (level data in `customLevelData`). Returns true on success.
@@ -162,10 +189,10 @@ async function advanceLevel() {
     if (ok) {
         // Reset ball and paddle for next level but keep score
         paddleX = (canvas.width - paddleWidth) / 2;
-        x = canvas.width / 2;
-        y = canvas.height - 50;
-        dx = ballSpeed;
-        dy = -ballSpeed;
+        balls = [
+            { x: canvas.width / 2, y: canvas.height - 50, dx: ballSpeed, dy: -ballSpeed, radius: ballRadius }
+        ];
+        bonuses = [];
         scoreMultiplier = 10;
     } else {
         console.warn('Failed to load next level');
@@ -595,10 +622,21 @@ function resetGame() {
     scoreMultiplier = 10;
     scorePopups = [];
     paddleX = (canvas.width - paddleWidth) / 2;
-    x = canvas.width / 2;
-    y = canvas.height - 50; // Start ball a bit higher to account for new height
-    dx = ballSpeed;
-    dy = -ballSpeed;
+    // Reset balls array to single ball
+    balls = [
+        { x: canvas.width / 2, y: canvas.height - 50, dx: ballSpeed, dy: -ballSpeed, radius: ballRadius }
+    ];
+    // Reset bonuses
+    bonuses = [];
+    bricksSinceLastBonus = 0;
+    targetBonusInterval = 10;
+    // Reset paddle size
+    if (padGrowActive) {
+        paddleWidth = padOriginalWidth || 75;
+        padOriginalWidth = null;
+        padGrowActive = false;
+        padGrowExpires = 0;
+    }
     // Load the appropriate level based on game mode
     if (gameMode === 'custom') {
         loadLevel(0); // This will use customLevelData
@@ -711,45 +749,59 @@ function draw() {
             }
         }
     }
-    drawBall();
+    // Draw all balls
+    for (let i = 0; i < balls.length; i++) {
+        drawBall(balls[i]);
+    }
     drawPaddle();
     drawScorePopups();
     drawScore();
     collisionDetection();
 
-    // Ball Movement
-    x += dx;
-    y += dy;
+    // Ball Movement and collision for each ball
+    for (let i = balls.length - 1; i >= 0; i--) {
+        const ball = balls[i];
+        
+        ball.x += ball.dx;
+        ball.y += ball.dy;
 
-    // Wall Collision
-    if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
-        dx = -dx;
-        // Trigger screenshake on wall hit
-        shakeTimer = 4;
-        shakeIntensity = 2;
-    }
-    if (y + dy < 40 + ballRadius) dy = -dy; // Prevent ball from going into score area
-    else if (y + dy > canvas.height - ballRadius - 20) {
-        if (x > paddleX && x < paddleX + paddleWidth) {
-            // Calculate hit position (-1 to 1)
-            let hit = (x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
-            // Set maximum bounce angle (radians, e.g. 60deg)
-            let maxAngle = Math.PI / 3;
-            let angle = hit * maxAngle;
-            // Set speed
-            let speed = Math.sqrt(dx * dx + dy * dy);
-            dx = speed * Math.sin(angle);
-            dy = -Math.abs(speed * Math.cos(angle));
-            scoreMultiplier = 10;
-        } else {
-            // Update highscore if needed
-            if (score > highscore) {
-                highscore = score;
-                setCookie(HIGH_SCORE_COOKIE, highscore, 365);
+        // Wall Collision
+        if (ball.x + ball.dx > canvas.width - ball.radius || ball.x + ball.dx < ball.radius) {
+            ball.dx = -ball.dx;
+            // Trigger screenshake on wall hit
+            shakeTimer = 4;
+            shakeIntensity = 2;
+        }
+        if (ball.y + ball.dy < 40 + ball.radius) {
+            ball.dy = -ball.dy; // Prevent ball from going into score area
+        } else if (ball.y + ball.dy > canvas.height - ball.radius - 20) {
+            // Paddle collision
+            if (ball.x > paddleX && ball.x < paddleX + paddleWidth) {
+                // Calculate hit position (-1 to 1)
+                let hit = (ball.x - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
+                // Set maximum bounce angle (radians, e.g. 60deg)
+                let maxAngle = Math.PI / 3;
+                let angle = hit * maxAngle;
+                // Set speed
+                let speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                ball.dx = speed * Math.sin(angle);
+                ball.dy = -Math.abs(speed * Math.cos(angle));
+                scoreMultiplier = 10;
+            } else {
+                // Ball missed paddle - remove it
+                balls.splice(i, 1);
+                // If no balls left, game over
+                if (balls.length === 0) {
+                    // Update highscore if needed
+                    if (score > highscore) {
+                        highscore = score;
+                        setCookie(HIGH_SCORE_COOKIE, highscore, 365);
+                    }
+                    gameOver = true;
+                    showGameOverButtons();
+                    return;
+                }
             }
-            gameOver = true;
-            showGameOverButtons();
-            return;
         }
     }
 
