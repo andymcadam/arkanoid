@@ -1,0 +1,23 @@
+{
+  "name": "arkanoid",
+  "version": "1.0.0",
+  "description": "This is a small test project — a vibe-coding session building an Arkanoid / Breakout-like clone using GPT and Visual Studio Code.",
+  "main": "arkanoid.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andymcadam/arkanoid.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/andymcadam/arkanoid/issues"
+  },
+  "homepage": "https://github.com/andymcadam/arkanoid#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.9.2"
+  }
+}
