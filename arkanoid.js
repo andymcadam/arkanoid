@@ -80,11 +80,16 @@ let levelTransitioning = false;
 // Bonus system
 let bonuses = [];
 let bricksSinceLastBonus = 0;
-let targetBonusInterval = 10; // first bonus after ~10 bricks
+let targetBonusInterval = 5; // first bonus after 5 bricks
 const PAD_GROW_DURATION = 10000; // 10 seconds in milliseconds
 let padGrowActive = false;
 let padOriginalWidth = null;
 let padGrowExpires = 0;
+
+// Multiball constants
+const MULTIBALL_ANGLE_RANGE = 120; // degrees range for random ball angles (-60 to +60 from vertical)
+const MULTIBALL_BALL_SPACING = 10; // pixels between spawned balls
+const MULTIBALL_ICON_BALL_SPACING = 8; // pixels between balls in multiball icon
 
 let bricks = [];
 function initBricks() {
@@ -470,12 +475,12 @@ function drawBricks() {
                         b.falling = true;
                         b.vy = 0;
                         b.opacity = 1;
-                        // Decide if this brick should drop a bonus (every ~10 bricks)
+                        // Decide if this brick should drop a bonus (every 5 bricks)
                         bricksSinceLastBonus++;
                         if (bricksSinceLastBonus >= targetBonusInterval) {
                             b.dropType = Math.random() < 0.6 ? 'padwidth' : 'multiball';
                             bricksSinceLastBonus = 0;
-                            targetBonusInterval = 8 + Math.floor(Math.random() * 5); // 8..12
+                            targetBonusInterval = 5; // fixed interval of 5 bricks
                         }
                         // If this brick was chosen to drop a bonus, spawn a bonus pickup at its position
                         if (b.dropType) {
@@ -629,7 +634,7 @@ function resetGame() {
     // Reset bonuses
     bonuses = [];
     bricksSinceLastBonus = 0;
-    targetBonusInterval = 10;
+    targetBonusInterval = 5;
     // Reset paddle size
     if (padGrowActive) {
         paddleWidth = padOriginalWidth || 75;
@@ -700,7 +705,7 @@ function draw() {
             B.vy += 0.03; // slight gravity (half speed)
             B.y += B.vy;
 
-            // draw: mini paddle icon for padwidth
+            // draw: mini paddle icon for padwidth, three balls for multiball
             if (B.type === 'padwidth') {
                 ctx.save();
                 ctx.fillStyle = '#0f0';
@@ -710,6 +715,22 @@ function draw() {
                 ctx.fillRect(bx, by, B.w, B.h);
                 ctx.lineWidth = 1;
                 ctx.strokeRect(bx, by, B.w, B.h);
+                ctx.restore();
+            } else if (B.type === 'multiball') {
+                // Draw three small blue balls to represent multiball
+                ctx.save();
+                ctx.fillStyle = '#09f';
+                ctx.strokeStyle = '#006699';
+                const bx = B.x;
+                const by = B.y;
+                const r = 4;
+                // Draw 3 small balls arranged horizontally
+                for (let offset of [-MULTIBALL_ICON_BALL_SPACING, 0, MULTIBALL_ICON_BALL_SPACING]) {
+                    ctx.beginPath();
+                    ctx.arc(bx + offset, by, r, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
                 ctx.restore();
             }
 
@@ -731,12 +752,33 @@ function draw() {
                         padGrowActive = true;
                         padGrowExpires = Date.now() + PAD_GROW_DURATION;
                     } else if (B.type === 'multiball') {
-                        // spawn two extra balls from paddle center
+                        // spawn two extra balls from paddle center with random upward angles
                         const center = paddleX + paddleWidth / 2;
                         const spawnY = py - 10;
                         const s = Math.max(2, ballSpeed);
-                        balls.push({ x: center - 10, y: spawnY, dx: -s * 0.6, dy: -Math.abs(s), radius: ballRadius });
-                        balls.push({ x: center + 10, y: spawnY, dx: s * 0.6, dy: -Math.abs(s), radius: ballRadius });
+                        
+                        // Helper function to generate a random upward angle
+                        const getRandomUpwardAngle = () => (Math.random() * MULTIBALL_ANGLE_RANGE - MULTIBALL_ANGLE_RANGE / 2) * Math.PI / 180;
+                        
+                        // Generate random angles for the two new balls
+                        const angle1 = getRandomUpwardAngle();
+                        const angle2 = getRandomUpwardAngle();
+                        
+                        // Create balls with random angles, always moving upward
+                        balls.push({ 
+                            x: center - MULTIBALL_BALL_SPACING, 
+                            y: spawnY, 
+                            dx: s * Math.sin(angle1), 
+                            dy: -Math.abs(s * Math.cos(angle1)), 
+                            radius: ballRadius 
+                        });
+                        balls.push({ 
+                            x: center + MULTIBALL_BALL_SPACING, 
+                            y: spawnY, 
+                            dx: s * Math.sin(angle2), 
+                            dy: -Math.abs(s * Math.cos(angle2)), 
+                            radius: ballRadius 
+                        });
                     }
                     bonuses.splice(i, 1);
                     continue;
