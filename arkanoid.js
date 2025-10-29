@@ -40,7 +40,7 @@ let gameOver = false;
 
 // Paddle
 const paddleHeight = 10;
-const paddleWidth = 75;
+let paddleWidth = 75;
 let paddleX = (canvas.width - paddleWidth) / 2;
 let rightPressed = false;
 let leftPressed = false;
@@ -48,12 +48,12 @@ const brickPadding = 1;
 
 // Ball
 const ballRadius = 8;
-let x = canvas.width / 2;
-let y = canvas.height - 50; // Start ball a bit higher to account for new height
 // starting speed for the ball (change this to adjust initial velocity)
 let ballSpeed = 4;
-let dx = ballSpeed;
-let dy = -ballSpeed;
+// support multiple balls
+let balls = [
+    { x: canvas.width / 2, y: canvas.height - 50, dx: ballSpeed, dy: -ballSpeed, radius: ballRadius }
+];
 
 // Bricks settings
 const brickRowCount = 5;
@@ -63,36 +63,30 @@ const brickHeight = 20;
 
 let bricks = [];
 function initBricks() {
+    // Initialize a fresh bricks grid with default properties
     bricks = [];
     for (let c = 0; c < brickColumnCount; c++) {
         bricks[c] = [];
         for (let r = 0; r < brickRowCount; r++) {
-            bricks[c][r] = { x: 0, y: 0, status: 0, falling: false, vy: 0, opacity: 1, flash: false, flashTimer: 0 };
+            bricks[c][r] = {
+                x: 0,
+                y: 0,
+                status: 0,
+                falling: false,
+                vy: 0,
+                opacity: 1,
+                flash: false,
+                flashTimer: 0,
+                dropType: null
+            };
         }
     }
 }
 
-initBricks();
-
-// Level management
-const levels = [
-    'levels/level1.csv',
-    'levels/level2.csv',
-    'levels/level3.csv',
-    'levels/level4.csv',
-    'levels/level5.csv',
-    'levels/level6.csv',
-    'levels/level7.csv',
-    'levels/level8.csv',
-    'levels/level9.csv',
-    'levels/level10.csv'
-];
-let currentLevelIndex = 0;
-let levelTransitioning = false;
-
+// Load a level by index. Supports normal (CSV files listed in `levels`) and
+// custom mode (level data in `customLevelData`). Returns true on success.
 async function loadLevel(index) {
     if (gameMode === 'custom') {
-        // Load custom level from stored data
         if (!customLevelData) return false;
         const rows = customLevelData.trim().split('\n').map(line => line.trim()).filter(Boolean);
         initBricks();
@@ -107,10 +101,11 @@ async function loadLevel(index) {
                 bricks[c][r].flashTimer = 0;
             }
         }
+        currentLevelIndex = index;
         return true;
     } else {
         // Normal campaign mode
-        if (index < 0 || index >= levels.length) return false;
+        if (!Array.isArray(levels) || index < 0 || index >= levels.length) return false;
         const path = levels[index];
         try {
             const resp = await fetch(path);
@@ -258,93 +253,69 @@ function keyUpHandler(e) {
     else if (e.key === 'Left' || e.key === 'ArrowLeft') leftPressed = false;
 }
 
-// Collision Detection
+// Collision Detection (per-ball)
 function collisionDetection() {
-    for (let c = 0; c < brickColumnCount; c++) {
-        for (let r = 0; r < brickRowCount; r++) {
-            const b = bricks[c][r];
-            if (b.status === 1 && !b.falling && !b.flash) {
-                // AABB vs circle overlap test
-                if (
-                    x + ballRadius > b.x && x - ballRadius < b.x + brickWidth &&
-                    y + ballRadius > b.y && y - ballRadius < b.y + brickHeight
-                ) {
-                    // Compute overlap amount on each axis
-                    const overlapX = Math.min(x + ballRadius, b.x + brickWidth) - Math.max(x - ballRadius, b.x);
-                    const overlapY = Math.min(y + ballRadius, b.y + brickHeight) - Math.max(y - ballRadius, b.y);
+    for (let bi = 0; bi < balls.length; bi++) {
+        const ball = balls[bi];
+        let collided = false;
+        for (let c = 0; c < brickColumnCount; c++) {
+            if (collided) break;
+            for (let r = 0; r < brickRowCount; r++) {
+                const b = bricks[c][r];
+                if (b.status === 1 && !b.falling && !b.flash) {
+                    if (
+                        ball.x + ball.radius > b.x && ball.x - ball.radius < b.x + brickWidth &&
+                        ball.y + ball.radius > b.y && ball.y - ball.radius < b.y + brickHeight
+                    ) {
+                        // Find previous position
+                        const prevX = ball.x - ball.dx;
+                        const prevY = ball.y - ball.dy;
 
-                    // Resolve collision on the axis with the smallest overlap (more likely the correct side)
-                    if (overlapX < overlapY) {
-                        // Horizontal collision - bounce X and nudge ball outside the brick to avoid multiple hits
-                        dx = -dx;
-                        if (dx > 0) {
-                            // ball now moving right, place it just to the right of the brick
-                            x = b.x + brickWidth + ballRadius + 0.1;
+                        const collidedHorizontally = (prevX + ball.radius <= b.x || prevX - ball.radius >= b.x + brickWidth);
+                        const collidedVertically = (prevY + ball.radius <= b.y || prevY - ball.radius >= b.y + brickHeight);
+
+                        if (collidedHorizontally) {
+                            ball.dx = -ball.dx;
+                        } else if (collidedVertically) {
+                            ball.dy = -ball.dy;
                         } else {
-                            // ball now moving left, place it just to the left of the brick
-                            x = b.x - ballRadius - 0.1;
+                            ball.dx = -ball.dx;
+                            ball.dy = -ball.dy;
                         }
-                    } else if (overlapY < overlapX) {
-                        // Vertical collision - bounce Y and nudge ball vertically
-                        dy = -dy;
-                        if (dy > 0) {
-                            // ball now moving down, place just below
-                            y = b.y + brickHeight + ballRadius + 0.1;
-                        } else {
-                            // ball now moving up, place just above
-                            y = b.y - ballRadius - 0.1;
-                        }
-                    } else {
-                        // Equal overlap: corner case - reverse both
-                        dx = -dx;
-                        dy = -dy;
-                        // small nudge backwards along previous motion
-                        x -= dx * 0.5;
-                        y -= dy * 0.5;
+
+                        b.flash = true;
+                        b.flashTimer = 6;
+                        shakeTimer = 6;
+                        shakeIntensity = 3;
+                        score += scoreMultiplier;
+                        scorePopups.push({ x: b.x + brickWidth / 2, y: b.y, text: `+${scoreMultiplier}`, opacity: 1.0 });
+                        scoreMultiplier += 10;
+
+                        collided = true;
+                        break;
                     }
-
-                    // Mark brick as hit (flash) and spawn score popup
-                    b.flash = true;
-                    b.flashTimer = 6; // frames to flash
-                    // Trigger screenshake on brick hit
-                    shakeTimer = 6;
-                    shakeIntensity = 3;
-                    score += scoreMultiplier;
-                    scorePopups.push({
-                        x: b.x + brickWidth / 2,
-                        y: b.y,
-                        text: `+${scoreMultiplier}`,
-                        opacity: 1.0
-                    });
-                    scoreMultiplier += 10;
-
-                    // Stop processing further bricks this frame to avoid multi-break due to penetration
-                    return;
                 }
-
             }
         }
     }
 }
 
 // Drawing Functions
-function drawBall() {
-    // Create a radial gradient to give the ball a spherical look
+function drawBall(ball) {
     const base = '#09f';
     const grad = ctx.createRadialGradient(
-        x - ballRadius * 0.35, y - ballRadius * 0.35, Math.max(1, ballRadius * 0.1),
-        x + ballRadius * 0.25, y + ballRadius * 0.25, ballRadius * 1.1
+        ball.x - ball.radius * 0.35, ball.y - ball.radius * 0.35, Math.max(1, ball.radius * 0.1),
+        ball.x + ball.radius * 0.25, ball.y + ball.radius * 0.25, ball.radius * 1.1
     );
-    grad.addColorStop(0, 'rgba(255,255,255,0.95)'); // bright specular
+    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
     grad.addColorStop(0.18, shadeColor(base, 22));
     grad.addColorStop(0.6, base);
     grad.addColorStop(1, shadeColor(base, -36));
 
     ctx.beginPath();
-    ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
     ctx.fillStyle = grad;
     ctx.fill();
-    // subtle rim to define the sphere
     ctx.lineWidth = 1;
     ctx.strokeStyle = 'rgba(0,0,0,0.25)';
     ctx.stroke();
@@ -472,6 +443,25 @@ function drawBricks() {
                         b.falling = true;
                         b.vy = 0;
                         b.opacity = 1;
+                        // Decide if this brick should drop a bonus (every ~10 bricks)
+                        bricksSinceLastBonus++;
+                        if (bricksSinceLastBonus >= targetBonusInterval) {
+                            b.dropType = Math.random() < 0.6 ? 'padwidth' : 'multiball';
+                            bricksSinceLastBonus = 0;
+                            targetBonusInterval = 8 + Math.floor(Math.random() * 5); // 8..12
+                        }
+                        // If this brick was chosen to drop a bonus, spawn a bonus pickup at its position
+                        if (b.dropType) {
+                            bonuses.push({
+                                x: b.x + brickWidth / 2,
+                                y: b.y + brickHeight + 4,
+                                vy: 1,
+                                type: b.dropType,
+                                w: 32,
+                                h: 10
+                            });
+                            b.dropType = null;
+                        }
                     }
                 }
             } else if (b.falling) {
@@ -663,6 +653,64 @@ function draw() {
     ctx.stroke();
     ctx.restore();
     drawBricks();
+    // Update and draw active bonuses (falling pickups)
+    if (bonuses.length > 0) {
+        const py = canvas.height - paddleHeight - 20;
+        for (let i = bonuses.length - 1; i >= 0; i--) {
+            const B = bonuses[i];
+            // physics (slower fall speed)
+            B.vy += 0.03; // slight gravity (half speed)
+            B.y += B.vy;
+
+            // draw: mini paddle icon for padwidth
+            if (B.type === 'padwidth') {
+                ctx.save();
+                ctx.fillStyle = '#0f0';
+                ctx.strokeStyle = '#003300';
+                const bx = B.x - B.w / 2;
+                const by = B.y - B.h / 2;
+                ctx.fillRect(bx, by, B.w, B.h);
+                ctx.lineWidth = 1;
+                ctx.strokeRect(bx, by, B.w, B.h);
+                ctx.restore();
+            }
+
+            // Check if caught by paddle
+            if (B.y + B.h/2 >= py && B.y - B.h/2 <= py + paddleHeight) {
+                if (B.x >= paddleX && B.x <= paddleX + paddleWidth) {
+                    // Caught!
+                    if (B.type === 'padwidth') {
+                        // preserve center and double width
+                        const center = paddleX + paddleWidth / 2;
+                        // if not active, set original width
+                        padOriginalWidth = padOriginalWidth || paddleWidth;
+                        paddleWidth = padOriginalWidth * 2;
+                        paddleX = center - paddleWidth / 2;
+                        // clamp
+                        if (paddleX < 0) paddleX = 0;
+                        if (paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
+                        // set/refresh timer
+                        padGrowActive = true;
+                        padGrowExpires = Date.now() + PAD_GROW_DURATION;
+                    } else if (B.type === 'multiball') {
+                        // spawn two extra balls from paddle center
+                        const center = paddleX + paddleWidth / 2;
+                        const spawnY = py - 10;
+                        const s = Math.max(2, ballSpeed);
+                        balls.push({ x: center - 10, y: spawnY, dx: -s * 0.6, dy: -Math.abs(s), radius: ballRadius });
+                        balls.push({ x: center + 10, y: spawnY, dx: s * 0.6, dy: -Math.abs(s), radius: ballRadius });
+                    }
+                    bonuses.splice(i, 1);
+                    continue;
+                }
+            }
+
+            // Remove if off-screen
+            if (B.y - B.h/2 > canvas.height) {
+                bonuses.splice(i, 1);
+            }
+        }
+    }
     drawBall();
     drawPaddle();
     drawScorePopups();
@@ -722,6 +770,18 @@ function draw() {
     if (paddleX < 0) paddleX = 0;
     if (paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
 
+    // Handle pad growth expiry
+    if (padGrowActive && Date.now() >= padGrowExpires) {
+        // revert to original width while preserving center
+        const center = paddleX + paddleWidth / 2;
+        paddleWidth = padOriginalWidth;
+        paddleX = center - paddleWidth / 2;
+        if (paddleX < 0) paddleX = 0;
+        if (paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
+        padGrowActive = false;
+        padGrowExpires = 0;
+    }
+
     // Win condition
     let bricksLeft = 0;
     for (let c = 0; c < brickColumnCount; c++) {
@@ -735,6 +795,24 @@ function draw() {
     }
     if (shakeTimer > 0) {
         ctx.restore();
+    }
+    // Draw active bonus HUD (top-right)
+    if (padGrowActive) {
+        const ttl = Math.max(0, padGrowExpires - Date.now());
+        const secs = Math.ceil(ttl / 1000);
+        const hudX = canvas.width - 120;
+        // small label
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        // draw mini paddle icon
+        ctx.save();
+        ctx.fillStyle = '#0f0';
+        ctx.fillRect(hudX, 8, 36, 8);
+        ctx.strokeStyle = '#003300';
+        ctx.strokeRect(hudX, 8, 36, 8);
+        ctx.restore();
+        ctx.fillText('Pad x2: ' + secs + 's', hudX + 44, 16);
     }
     requestAnimationFrame(draw);
 }
