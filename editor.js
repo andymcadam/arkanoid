@@ -258,6 +258,48 @@ function deleteLevel(levelName) {
     }
 }
 
+// Create a mini canvas preview of a level from CSV data
+function createLevelPreview(csvData) {
+    const miniCanvas = document.createElement('canvas');
+    const miniWidth = 120;
+    const miniHeight = 60;
+    miniCanvas.width = miniWidth;
+    miniCanvas.height = miniHeight;
+    const miniCtx = miniCanvas.getContext('2d');
+    
+    // Parse the CSV data
+    const rows = csvData.trim().split('\n').map(line => line.trim()).filter(Boolean);
+    const grid = [];
+    for (let r = 0; r < Math.min(rows.length, BRICK_ROWS); r++) {
+        const cols = rows[r].split(',').map(s => parseInt(s, 10) || 0);
+        grid[r] = cols;
+    }
+    
+    // Calculate brick size for mini preview
+    const miniBrickWidth = miniWidth / BRICK_COLS;
+    const miniBrickHeight = miniHeight / BRICK_ROWS;
+    
+    // Draw mini bricks
+    miniCtx.fillStyle = '#000';
+    miniCtx.fillRect(0, 0, miniWidth, miniHeight);
+    
+    for (let r = 0; r < grid.length && r < BRICK_ROWS; r++) {
+        for (let c = 0; c < grid[r].length && c < BRICK_COLS; c++) {
+            if (grid[r][c] === 1) {
+                const x = c * miniBrickWidth;
+                const y = r * miniBrickHeight;
+                const baseColor = rowColors[BRICK_ROWS - 1 - r] || "#999";
+                
+                // Simple fill for mini version
+                miniCtx.fillStyle = baseColor;
+                miniCtx.fillRect(x, y, miniBrickWidth - 0.5, miniBrickHeight - 0.5);
+            }
+        }
+    }
+    
+    return miniCanvas;
+}
+
 // Display custom levels list
 function displayCustomLevels() {
     const levels = getCustomLevels();
@@ -273,8 +315,22 @@ function displayCustomLevels() {
     levelNames.forEach(name => {
         const li = document.createElement('li');
         
+        // Create a container for preview and name
+        const previewContainer = document.createElement('div');
+        previewContainer.style.display = 'flex';
+        previewContainer.style.alignItems = 'center';
+        previewContainer.style.gap = '15px';
+        
+        // Create preview canvas
+        const preview = createLevelPreview(levels[name]);
+        preview.style.border = '1px solid #555';
+        preview.style.borderRadius = '2px';
+        
         const nameSpan = document.createElement('span');
         nameSpan.textContent = name;
+        
+        previewContainer.appendChild(preview);
+        previewContainer.appendChild(nameSpan);
         
         const buttonContainer = document.createElement('div');
         
@@ -291,7 +347,7 @@ function displayCustomLevels() {
         buttonContainer.appendChild(loadBtn);
         buttonContainer.appendChild(deleteBtn);
         
-        li.appendChild(nameSpan);
+        li.appendChild(previewContainer);
         li.appendChild(buttonContainer);
         list.appendChild(li);
     });

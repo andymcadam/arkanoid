@@ -881,6 +881,48 @@ function showMainMenu() {
     gameOverContainer.style.display = 'none';
 }
 
+// Create a mini canvas preview of a level from CSV data
+function createLevelPreview(csvData) {
+    const miniCanvas = document.createElement('canvas');
+    const miniWidth = 120;
+    const miniHeight = 60;
+    miniCanvas.width = miniWidth;
+    miniCanvas.height = miniHeight;
+    const miniCtx = miniCanvas.getContext('2d');
+    
+    // Parse the CSV data
+    const rows = csvData.trim().split('\n').map(line => line.trim()).filter(Boolean);
+    const grid = [];
+    for (let r = 0; r < Math.min(rows.length, brickRowCount); r++) {
+        const cols = rows[r].split(',').map(s => parseInt(s, 10) || 0);
+        grid[r] = cols;
+    }
+    
+    // Calculate brick size for mini preview
+    const miniBrickWidth = miniWidth / brickColumnCount;
+    const miniBrickHeight = miniHeight / brickRowCount;
+    
+    // Draw mini bricks
+    miniCtx.fillStyle = '#000';
+    miniCtx.fillRect(0, 0, miniWidth, miniHeight);
+    
+    for (let r = 0; r < grid.length && r < brickRowCount; r++) {
+        for (let c = 0; c < grid[r].length && c < brickColumnCount; c++) {
+            if (grid[r][c] === 1) {
+                const x = c * miniBrickWidth;
+                const y = r * miniBrickHeight;
+                const baseColor = rowColors[brickRowCount - 1 - r] || "#999";
+                
+                // Simple fill for mini version
+                miniCtx.fillStyle = baseColor;
+                miniCtx.fillRect(x, y, miniBrickWidth - 0.5, miniBrickHeight - 0.5);
+            }
+        }
+    }
+    
+    return miniCanvas;
+}
+
 function showCustomLevelSelect() {
     document.getElementById('mainMenu').style.display = 'none';
     document.getElementById('customLevelSelect').style.display = 'block';
@@ -898,7 +940,21 @@ function showCustomLevelSelect() {
         levelNames.forEach(name => {
             const levelItem = document.createElement('div');
             levelItem.className = 'level-item';
-            levelItem.textContent = name;
+            
+            // Create preview canvas
+            const preview = createLevelPreview(customLevels[name]);
+            preview.style.marginRight = '15px';
+            preview.style.border = '1px solid #555';
+            preview.style.borderRadius = '2px';
+            preview.style.verticalAlign = 'middle';
+            
+            // Create text span
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = name;
+            nameSpan.style.verticalAlign = 'middle';
+            
+            levelItem.appendChild(preview);
+            levelItem.appendChild(nameSpan);
             levelItem.onclick = () => startCustomLevel(name, customLevels[name]);
             levelList.appendChild(levelItem);
         });
