@@ -212,28 +212,46 @@ function collisionDetection() {
         for (let r = 0; r < brickRowCount; r++) {
             const b = bricks[c][r];
             if (b.status === 1 && !b.falling && !b.flash) {
+                // AABB vs circle overlap test
                 if (
                     x + ballRadius > b.x && x - ballRadius < b.x + brickWidth &&
                     y + ballRadius > b.y && y - ballRadius < b.y + brickHeight
                 ) {
-                    // Find previous position
-                    let prevX = x - dx;
-                    let prevY = y - dy;
+                    // Compute overlap amount on each axis
+                    const overlapX = Math.min(x + ballRadius, b.x + brickWidth) - Math.max(x - ballRadius, b.x);
+                    const overlapY = Math.min(y + ballRadius, b.y + brickHeight) - Math.max(y - ballRadius, b.y);
 
-                    // Was the ball previously above/below or to the side?
-                    let collidedHorizontally = (prevX + ballRadius <= b.x || prevX - ballRadius >= b.x + brickWidth);
-                    let collidedVertically = (prevY + ballRadius <= b.y || prevY - ballRadius >= b.y + brickHeight);
-
-                    if (collidedHorizontally) {
-                        dx = -dx; // Hit left/right side, bounce X
-                    } else if (collidedVertically) {
-                        dy = -dy; // Hit top/bottom, bounce Y
+                    // Resolve collision on the axis with the smallest overlap (more likely the correct side)
+                    if (overlapX < overlapY) {
+                        // Horizontal collision - bounce X and nudge ball outside the brick to avoid multiple hits
+                        dx = -dx;
+                        if (dx > 0) {
+                            // ball now moving right, place it just to the right of the brick
+                            x = b.x + brickWidth + ballRadius + 0.1;
+                        } else {
+                            // ball now moving left, place it just to the left of the brick
+                            x = b.x - ballRadius - 0.1;
+                        }
+                    } else if (overlapY < overlapX) {
+                        // Vertical collision - bounce Y and nudge ball vertically
+                        dy = -dy;
+                        if (dy > 0) {
+                            // ball now moving down, place just below
+                            y = b.y + brickHeight + ballRadius + 0.1;
+                        } else {
+                            // ball now moving up, place just above
+                            y = b.y - ballRadius - 0.1;
+                        }
                     } else {
-                        // fallback: reverse both if in doubt (corner hit)
+                        // Equal overlap: corner case - reverse both
                         dx = -dx;
                         dy = -dy;
+                        // small nudge backwards along previous motion
+                        x -= dx * 0.5;
+                        y -= dy * 0.5;
                     }
 
+                    // Mark brick as hit (flash) and spawn score popup
                     b.flash = true;
                     b.flashTimer = 6; // frames to flash
                     // Trigger screenshake on brick hit
@@ -247,6 +265,9 @@ function collisionDetection() {
                         opacity: 1.0
                     });
                     scoreMultiplier += 10;
+
+                    // Stop processing further bricks this frame to avoid multi-break due to penetration
+                    return;
                 }
 
             }
