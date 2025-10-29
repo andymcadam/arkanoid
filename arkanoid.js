@@ -196,6 +196,58 @@ for (let i = 0; i < STAR_COUNT; i++) {
 document.addEventListener('keydown', keyDownHandler);
 document.addEventListener('keyup', keyUpHandler);
 
+// Gamepad support
+let gamepadIndex = null; // index of the connected gamepad (if any)
+let gamepadAxis = 0; // -1..1 horizontal axis value from left stick
+let gamepadPrevButtons = []; // previous frame button states for edge detection
+const GAMEPAD_MAX_PADDLE_SPEED = 7; // max pixels/frame when stick fully tilted
+
+window.addEventListener('gamepadconnected', (e) => {
+    gamepadIndex = e.gamepad.index;
+    console.log('Gamepad connected at index', gamepadIndex, 'id=', e.gamepad.id);
+});
+
+window.addEventListener('gamepaddisconnected', (e) => {
+    if (gamepadIndex === e.gamepad.index) gamepadIndex = null;
+    console.log('Gamepad disconnected from index', e.gamepad.index);
+});
+
+function updateGamepadState() {
+    // Map gamepad axis/buttons to left/right movement
+    const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+    const gp = (gamepadIndex != null) ? gps[gamepadIndex] : (gps && gps.length ? gps[0] : null);
+    if (!gp) return; // no gamepad
+
+    // Axis 0: left stick horizontal (-1 left, +1 right)
+    const axis = gp.axes && gp.axes.length > 0 ? gp.axes[0] : 0;
+    const DEADZONE = 0.15; // smaller deadzone so light tilt moves slowly
+    // store analog axis value for use in movement (clamped to -1..1)
+    gamepadAxis = Math.max(-1, Math.min(1, axis));
+
+    // If inside deadzone, treat axis as 0 and fallback to d-pad
+    if (Math.abs(gamepadAxis) < DEADZONE) {
+        gamepadAxis = 0;
+        const btnLeft = gp.buttons && gp.buttons[14] ? gp.buttons[14].pressed : false;
+        const btnRight = gp.buttons && gp.buttons[15] ? gp.buttons[15].pressed : false;
+        leftPressed = !!btnLeft;
+        rightPressed = !!btnRight;
+    } else {
+        // When analog stick is active, clear digital flags so movement is analog-driven
+        leftPressed = false;
+        rightPressed = false;
+    }
+
+    // Button edge detection (A button = button 0 on Xbox controllers)
+    const aPressed = gp.buttons && gp.buttons[0] ? gp.buttons[0].pressed : false;
+    const prevA = !!gamepadPrevButtons[0];
+    if (aPressed && !prevA) {
+        // rising edge - handle A button press
+        handleAButtonPress();
+    }
+    // update previous buttons
+    gamepadPrevButtons[0] = aPressed;
+}
+
 function keyDownHandler(e) {
     if (e.key === 'Right' || e.key === 'ArrowRight') rightPressed = true;
     else if (e.key === 'Left' || e.key === 'ArrowLeft') leftPressed = true;
@@ -654,11 +706,21 @@ function draw() {
     }
 
     // Paddle Movement
-    if (rightPressed && paddleX < canvas.width - paddleWidth) {
+    // Update gamepad state (if a gamepad is connected) so axes/buttons map to left/right
+    updateGamepadState();
+    // If an analog axis is active, use it to set paddle speed proportionally.
+    if (gamepadAxis !== 0) {
+        const movement = gamepadAxis * GAMEPAD_MAX_PADDLE_SPEED; // -max..+max
+        paddleX += movement;
+    } else if (rightPressed && paddleX < canvas.width - paddleWidth) {
         paddleX += 5;
     } else if (leftPressed && paddleX > 0) {
         paddleX -= 5;
     }
+
+    // Clamp paddle inside canvas
+    if (paddleX < 0) paddleX = 0;
+    if (paddleX > canvas.width - paddleWidth) paddleX = canvas.width - paddleWidth;
 
     // Win condition
     let bricksLeft = 0;
@@ -744,3 +806,39 @@ function startCustomLevel(levelName, levelData) {
     gameOver = false;
     draw();
 }
+
+function handleAButtonPress() {
+    // If the game UI is not visible (menu), start a normal game
+    const gameContainer = document.getElementById('gameContainer');
+    if (!gameContainer || gameContainer.style.display !== 'block') {
+        // Start normal game from menu
+        startNormalGame();
+        return;
+    }
+
+    // If game is over, restart
+    if (gameOver) {
+        resetGame();
+        gameOver = false;
+        gameOverContainer.style.display = 'none';
+        draw();
+        return;
+    }
+
+    // Otherwise: no-op (could be used for launch/serve in future)
+}
+
+// Poll the gamepad state continuously (even when the main game loop is not running)
+// This ensures button presses like 'A' are detected while in menus or when gameOver
+function pollGamepad() {
+    try {
+        updateGamepadState();
+    } catch (e) {
+        // Defensive: don't let gamepad polling break the app
+        console.error('Error while polling gamepad:', e);
+    }
+    requestAnimationFrame(pollGamepad);
+}
+
+// Start polling immediately
+pollGamepad();

@@ -70,3 +70,37 @@ If you plan to run this on a Raspberry Pi, use the local server instructions abo
 ## License
 
 This repository is an experimental personal project. Use however you like.
+
+## Gamepad Controls (new)
+
+This project now supports gamepad input via the browser Gamepad API. The following controls are implemented (Xbox-style controllers are used as the reference mapping):
+
+- Left analog stick (horizontal) — analog paddle movement. Push the stick partway for slow paddle movement, push it fully for maximum speed. The maximum paddle speed is controlled by the `GAMEPAD_MAX_PADDLE_SPEED` constant in `arkanoid.js`.
+- D-pad Left / Right (buttons 14 / 15) — digital fallback for left/right movement when the stick is centered.
+- A button (button 0) — used to start a normal game from the main menu and to restart the game when it's over.
+
+How it works:
+
+- The game listens for `gamepadconnected` / `gamepaddisconnected` events and polls the connected gamepad each frame.
+- The left-stick horizontal axis (-1..+1) is read and, when outside a small deadzone, used to move the paddle proportionally to the tilt (analog control).
+- When the stick is within the deadzone, the D-pad buttons are used as a digital fallback.
+- The A button is detected on its rising edge (press) to trigger start/restart logic.
+
+Testing tips:
+
+1. Serve the project with a local HTTP server and open `arkanoid.htm` in a browser (Chrome, Edge or Firefox recommended):
+
+```bash
+python3 -m http.server 8000
+# open http://localhost:8000/arkanoid.htm
+```
+
+2. Plug in an Xbox controller (or another controller supported by your OS).
+3. Open the browser DevTools Console to see connection logs such as "Gamepad connected at index 0".
+4. From the main menu, press A to start the game, or click "Play Game".
+5. Use the left stick to move the paddle analogically. Use the D-pad for digital movement, or the keyboard arrow keys as before.
+
+Tweaks:
+
+- Adjust `GAMEPAD_MAX_PADDLE_SPEED` in `arkanoid.js` to change top speed for analog movement.
+- If you'd like different sensitivity, I can add a simple settings UI to control deadzone and sensitivity.
