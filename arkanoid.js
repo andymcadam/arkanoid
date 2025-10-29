@@ -86,6 +86,11 @@ let padGrowActive = false;
 let padOriginalWidth = null;
 let padGrowExpires = 0;
 
+// Multiball constants
+const MULTIBALL_ANGLE_RANGE = 120; // degrees range for random ball angles (-60 to +60 from vertical)
+const MULTIBALL_BALL_SPACING = 10; // pixels between spawned balls
+const MULTIBALL_ICON_BALL_SPACING = 8; // pixels between balls in multiball icon
+
 let bricks = [];
 function initBricks() {
     // Initialize a fresh bricks grid with default properties
@@ -720,7 +725,7 @@ function draw() {
                 const by = B.y;
                 const r = 4;
                 // Draw 3 small balls arranged horizontally
-                for (let offset of [-8, 0, 8]) {
+                for (let offset of [-MULTIBALL_ICON_BALL_SPACING, 0, MULTIBALL_ICON_BALL_SPACING]) {
                     ctx.beginPath();
                     ctx.arc(bx + offset, by, r, 0, Math.PI * 2);
                     ctx.fill();
@@ -752,20 +757,23 @@ function draw() {
                         const spawnY = py - 10;
                         const s = Math.max(2, ballSpeed);
                         
-                        // Generate random angles for the two new balls (upward, between -60 to 60 degrees from vertical)
-                        const angle1 = (Math.random() * 120 - 60) * Math.PI / 180; // -60 to 60 degrees
-                        const angle2 = (Math.random() * 120 - 60) * Math.PI / 180; // -60 to 60 degrees
+                        // Helper function to generate a random upward angle
+                        const getRandomUpwardAngle = () => (Math.random() * MULTIBALL_ANGLE_RANGE - MULTIBALL_ANGLE_RANGE / 2) * Math.PI / 180;
+                        
+                        // Generate random angles for the two new balls
+                        const angle1 = getRandomUpwardAngle();
+                        const angle2 = getRandomUpwardAngle();
                         
                         // Create balls with random angles, always moving upward
                         balls.push({ 
-                            x: center - 10, 
+                            x: center - MULTIBALL_BALL_SPACING, 
                             y: spawnY, 
                             dx: s * Math.sin(angle1), 
                             dy: -Math.abs(s * Math.cos(angle1)), 
                             radius: ballRadius 
                         });
                         balls.push({ 
-                            x: center + 10, 
+                            x: center + MULTIBALL_BALL_SPACING, 
                             y: spawnY, 
                             dx: s * Math.sin(angle2), 
                             dy: -Math.abs(s * Math.cos(angle2)), 
